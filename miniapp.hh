@@ -63,7 +63,7 @@ private:
 
 	int n_eg, n_a, N_A, n_m, cm_xy, fm_xy, cm_z, fm_z, phi_size, upscatter, iter, totNFM_x, totNFM_y, totNFM_z, nTs, N, blocksize_xy;
 	int blocksize_z, n_b, n_p, remain;
-	v_dbl mu, eta, xi;
+	v_dbl mu, eta, xi, wt;
 	real* phi;
 	real Delta_x, Delta_y, Delta_z;
 	vector<int> RegMat;

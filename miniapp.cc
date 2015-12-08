@@ -159,28 +159,17 @@ void Solver::get_quadrature()
 	 * directly use azimuthal angle phi to represent directions, so divided [0, pi/2] into n_a
 	 * sections */
 
-	v_dbl phi_0(n_a, 0.0);
-	real delta_phi = 0.5 * M_PI / n_a;
-	for (int i = 0; i < n_a; ++i)
-		phi_0[i] = real(i) * delta_phi + 0.5 * delta_phi;
-
-	v_dbl cos_theta(n_a, 0.0);
-	real delta_theta = 1.0 / n_a;
-	for (int i = 0; i < n_a; ++i)
-		cos_theta[i] = real(i) * delta_theta + 0.5 * delta_theta;
-
-	for (int i = 0; i < n_a; ++i) //index of azimuthal angle
+	mu.resize(N_A);
+	eta.resize(N_A);
+	xi.resize(N_A);
+	wt.resize(N_A);
+	for (int i = 0; i < N_A; ++i)
 	{
-		for (int j = 0; j < n_a; ++j) //index of polar angle
-		{
-			real sin_theta = sqrt(1 - cos_theta[j] * cos_theta[j]);
-			// mu = cos(phi)*sin(theta)
-			mu.push_back(cos(phi_0[i]) * sin_theta);
-			// eta = sin(phi)*sin(theta)
-			eta.push_back(sin(phi_0[i]) * sin_theta);
-			// xi = cos(theta)
-			xi.push_back(cos_theta[j]);
-		}
+		mu[i] = 1.0/(i+0.5/i/N_A);
+		int j = N_A - i - 1;
+		eta[i] = 1.0/(j+0.5/j/N_A);
+		xi[i] = std::sqrt(1.0-mu[i]*mu[i]-eta[i]*eta[i]);
+		wt[i] = 1.5707963267948966 / N_A;
 	}
 }
 
@@ -391,7 +380,7 @@ void Solver::sweep_aes(int start_TID[])
 										const int index_z = x_local * blocksize_xy + y_local;
 										c = (muDelta[a] * bd_info_x[index_x] +	etaDelta[a] * bd_info_y[index_y] +	xiDelta[a] * bd_info_z[index_z] +
 												Q[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e]) / (SigT[m * n_eg + e] + sum[a]);
-										phi[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e] += weight * c;
+										phi[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e] += wt[a] * c;
 										bd_info_x[index_x] = 2.0 * c - bd_info_x[index_x];
 										bd_info_y[index_y] = 2.0 * c - bd_info_y[index_y];
 										bd_info_z[index_z] = 2.0 * c - bd_info_z[index_z];
@@ -535,7 +524,7 @@ void Solver::sweep_ase(int start_TID[])
 									{
 										c[e] = (muDelta[a] * bd_info_x[index_x + e] + etaDelta[a] * bd_info_y[index_y + e] + xiDelta[a] * bd_info_z[index_z + e] +
 												Q[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e]) / (SigT[m * n_eg + e] + sum[a]);
-										phi[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e] += weight * c[e];
+										phi[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e] += wt[a] * c[e];
 										bd_info_x[index_x + e] = 2.0 * c[e] - bd_info_x[index_x + e];
 										bd_info_y[index_y + e] = 2.0 * c[e] - bd_info_y[index_y + e];
 										bd_info_z[index_z + e] = 2.0 * c[e] - bd_info_z[index_z + e];
@@ -686,7 +675,7 @@ void Solver::sweep_eas(int start_TID[])
 										const int index_z = x_local * blocksize_xy + y_local;
 										c = (muDelta[a] * bd_info_x[index_x] +	etaDelta[a] * bd_info_y[index_y] +	xiDelta[a] * bd_info_z[index_z] +
 												Q[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e]) / (SigT[m * n_eg + e] + sum[a]);
-										phi[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e] += weight * c;
+										phi[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e] += wt[a] * c;
 										bd_info_x[index_x] = 2.0 * c - bd_info_x[index_x];
 										bd_info_y[index_y] = 2.0 * c - bd_info_y[index_y];
 										bd_info_z[index_z] = 2.0 * c - bd_info_z[index_z];
@@ -744,7 +733,7 @@ void Solver::sweep_eas(int start_TID[])
 								const int m = fmmid[z * totNFM_x * totNFM_y + x * totNFM_y + y];
 								c = (muDelta[a] * ch + etaDelta[a] * cv[y] + xiDelta[a] * cz[x * totNFM_y + y] +
 										Q[z * totNFM_x * totNFM_y * n_eg + x * totNFM_y * n_eg + y * n_eg + e])
-																																																						/ (SigT[m * n_eg + e] + sum[a]);
+																																																								/ (SigT[m * n_eg + e] + sum[a]);
 								phi[z * totNFM_x * totNFM_y * n_eg + x * totNFM_y * n_eg + y * n_eg + e] += weight * c;
 								ch = 2.0 * c - ch;
 								cv[y] = 2.0 * c - cv[y];
@@ -834,7 +823,7 @@ void Solver::sweep_esa(int start_TID[])
 										c[a] = (muDelta[a] * bd_info_x[index_x + a] + etaDelta[a] * bd_info_y[index_y + a] + xiDelta[a] * bd_info_z[index_z + a] +
 												Q[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e]) / (SigT[m * n_eg + e] +
 														sum[a]);
-										phi_tmp[a] = weight * c[a];
+										phi_tmp[a] = wt[a] * c[a];
 										bd_info_x[index_x + a] = 2.0 * c[a] - bd_info_x[index_x + a];
 										bd_info_y[index_y + a] = 2.0 * c[a] - bd_info_y[index_y + a];
 										bd_info_z[index_z + a] = 2.0 * c[a] - bd_info_z[index_z + a];
@@ -992,7 +981,7 @@ void Solver::sweep_sae(int start_TID[])
 									{
 										c[e] = (muDelta[a] * bd_info_x[index_x + A + e] + etaDelta[a] * bd_info_y[index_y + A + e] +	xiDelta[a] * bd_info_z[index_z + A + e] +
 												Q[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e]) / (SigT[m * n_eg + e] + sum[a]);
-										phi[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e] += weight * c[e];
+										phi[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e] += wt[a] * c[e];
 										bd_info_x[index_x + A + e] = 2.0 * c[e] - bd_info_x[index_x + A + e];
 										bd_info_y[index_y + A + e] = 2.0 * c[e] - bd_info_y[index_y + A + e];
 										bd_info_z[index_z + A + e] = 2.0 * c[e] - bd_info_z[index_z + A + e];
@@ -1155,7 +1144,7 @@ void Solver::sweep_sea(int start_TID[])
 										c[a] = (muDelta[a] * bd_info_x[index_x + E + a] + etaDelta[a] * bd_info_y[index_y + E + a] + xiDelta[a] * bd_info_z[index_z + E + a] +
 												Q[z_global * totNFM_x * totNFM_y * n_eg + x_global * totNFM_y * n_eg + y_global * n_eg + e]) / (SigT[m * n_eg + e] +
 														sum[a]);
-										phi_tmp[a] = weight * c[a];
+										phi_tmp[a] = wt[a] * c[a];
 										bd_info_x[index_x + E + a] = 2.0 * c[a] - bd_info_x[index_x + E + a];
 										bd_info_y[index_y + E + a] = 2.0 * c[a] - bd_info_y[index_y + E + a];
 										bd_info_z[index_z + E + a] = 2.0 * c[a] - bd_info_z[index_z + E + a];
